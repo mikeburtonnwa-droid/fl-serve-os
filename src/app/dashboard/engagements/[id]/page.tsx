@@ -10,6 +10,7 @@ import { Breadcrumb } from '@/components/ui/breadcrumb'
 import { useToast } from '@/components/ui/toast'
 import { WorkflowRequirements } from '@/components/engagements/workflow-requirements'
 import { ArtifactSuggestions } from '@/components/engagements/artifact-suggestions'
+import { MarkdownRenderer } from '@/components/ui/markdown-renderer'
 import {
   ArrowLeft,
   Building2,
@@ -501,10 +502,12 @@ export default function EngagementDetailPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="bg-white rounded-lg p-4 max-h-96 overflow-y-auto prose prose-sm max-w-none">
-                <pre className="whitespace-pre-wrap text-sm text-slate-700">
-                  {selectedStationRun.output_data?.content || selectedStationRun.error_message}
-                </pre>
+              <div className="bg-white rounded-lg p-4 max-h-96 overflow-y-auto">
+                <MarkdownRenderer
+                  content={selectedStationRun.output_data?.content || selectedStationRun.error_message}
+                  collapsibleJson={true}
+                  enableCopy={true}
+                />
               </div>
               {selectedStationRun.requires_approval && selectedStationRun.status === 'awaiting_approval' && (
                 <div className="mt-4 flex gap-2">
