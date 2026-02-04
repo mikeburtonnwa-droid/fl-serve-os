@@ -22,7 +22,6 @@ import React, {
   useMemo,
 } from 'react'
 import { useRouter } from 'next/navigation'
-import { createBrowserClient } from '@supabase/ssr'
 import {
   Search,
   X,
@@ -32,7 +31,6 @@ import {
   Loader2,
   Clock,
   ArrowRight,
-  Command,
 } from 'lucide-react'
 import { clsx } from 'clsx'
 import {
@@ -421,7 +419,7 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
             {query && results && results.total === 0 && (
               <div className="px-4 py-12 text-center">
                 <Search className="h-12 w-12 text-slate-300 mx-auto mb-3" />
-                <p className="text-slate-500">No results found for "{query}"</p>
+                <p className="text-slate-500">No results found for &ldquo;{query}&rdquo;</p>
                 <p className="text-sm text-slate-400 mt-1">
                   Try adjusting your search terms
                 </p>

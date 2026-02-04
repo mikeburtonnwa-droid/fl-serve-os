@@ -17,7 +17,8 @@ import {
   engagementToSearchable,
   artifactToSearchable,
   type SearchResultType,
-  type GroupedSearchResults,
+  type Engagement,
+  type Artifact,
 } from '@/lib/search'
 
 // =============================================================================
@@ -132,8 +133,23 @@ export async function GET(request: NextRequest) {
     // Add engagements
     if (engagementsResult.data && (!types || types.includes('engagement'))) {
       for (const engagement of engagementsResult.data) {
-        if (engagement.client) {
-          searchableItems.push(engagementToSearchable(engagement as any))
+        // Handle Supabase nested relation format (may be array or object)
+        const clientData = Array.isArray(engagement.client)
+          ? engagement.client[0]
+          : engagement.client
+        if (clientData) {
+          const engagementData: Engagement = {
+            id: engagement.id,
+            name: engagement.name,
+            pathway: engagement.pathway,
+            status: engagement.status,
+            notes: engagement.notes,
+            client: {
+              id: clientData.id,
+              name: clientData.name,
+            },
+          }
+          searchableItems.push(engagementToSearchable(engagementData))
         }
       }
     }
@@ -142,22 +158,29 @@ export async function GET(request: NextRequest) {
     if (artifactsResult.data && (!types || types.includes('artifact'))) {
       for (const artifact of artifactsResult.data) {
         // Handle Supabase nested relation format (may be array or object)
-        const engagement = Array.isArray(artifact.engagement)
+        const engagementData = Array.isArray(artifact.engagement)
           ? artifact.engagement[0]
           : artifact.engagement
-        if (engagement) {
-          const client = Array.isArray(engagement.client)
-            ? engagement.client[0]
-            : engagement.client
-          if (client) {
-            const transformedArtifact = {
-              ...artifact,
+        if (engagementData) {
+          const clientData = Array.isArray(engagementData.client)
+            ? engagementData.client[0]
+            : engagementData.client
+          if (clientData) {
+            const artifactData: Artifact = {
+              id: artifact.id,
+              name: artifact.name,
+              template_id: artifact.template_id,
+              status: artifact.status,
+              content: artifact.content as Record<string, unknown>,
               engagement: {
-                ...engagement,
-                client,
+                id: engagementData.id,
+                name: engagementData.name,
+                client: {
+                  name: clientData.name,
+                },
               },
             }
-            searchableItems.push(artifactToSearchable(transformedArtifact as any))
+            searchableItems.push(artifactToSearchable(artifactData))
           }
         }
       }
