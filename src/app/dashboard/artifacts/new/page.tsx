@@ -74,6 +74,7 @@ export default function NewArtifactPage() {
     }
 
     fetchData()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [engagementId, templateId])
 
   const handleFieldChange = (fieldId: string, value: unknown) => {

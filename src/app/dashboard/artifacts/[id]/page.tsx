@@ -25,6 +25,12 @@ import Link from 'next/link'
 import { format } from 'date-fns'
 import { getTemplate, type Template, type TemplateField } from '@/lib/templates'
 import { PDFExportButton } from '@/components/artifacts/pdf-export-button'
+import {
+  VersionHistoryPanel,
+  ConcurrentEditWarning,
+  EditingBadge,
+} from '@/components/artifacts'
+import type { ConflictInfo, ConflictResolution } from '@/lib/versions'
 
 interface Artifact {
   id: string
@@ -63,6 +69,14 @@ export default function ArtifactDetailPage() {
   const [editedContent, setEditedContent] = useState<Record<string, unknown>>({})
   const [editedName, setEditedName] = useState('')
 
+  // Version history state (F5.2)
+  const [versionHistoryOpen, setVersionHistoryOpen] = useState(false)
+
+  // Concurrent edit state (F5.5)
+  const [conflictInfo, setConflictInfo] = useState<ConflictInfo | null>(null)
+  const [showConflictWarning, setShowConflictWarning] = useState(false)
+  const [lastKnownVersion, setLastKnownVersion] = useState<number>(0)
+
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -88,6 +102,7 @@ export default function ArtifactDetailPage() {
     setArtifact(data)
     setEditedContent(data.content || {})
     setEditedName(data.name)
+    setLastKnownVersion(data.version)
 
     const tmpl = getTemplate(data.template_id)
     setTemplate(tmpl || null)
@@ -107,6 +122,16 @@ export default function ArtifactDetailPage() {
   const handleSave = async () => {
     if (!artifact) return
 
+    // Check for concurrent edits before saving (F5.5)
+    if (artifact.version !== lastKnownVersion) {
+      setConflictInfo({
+        hasConflict: true,
+        currentVersion: artifact.version,
+      })
+      setShowConflictWarning(true)
+      return
+    }
+
     setSaving(true)
     try {
       const response = await fetch(`/api/artifacts/${artifact.id}`, {
@@ -115,18 +140,76 @@ export default function ArtifactDetailPage() {
         body: JSON.stringify({
           name: editedName,
           content: editedContent,
+          expectedVersion: lastKnownVersion,
         }),
       })
+
+      const data = await response.json()
 
       if (response.ok) {
         await fetchData()
         setEditing(false)
+      } else if (data.conflict) {
+        // Server detected concurrent edit
+        setConflictInfo(data.conflict)
+        setShowConflictWarning(true)
       }
     } catch (error) {
       console.error('Save failed:', error)
     } finally {
       setSaving(false)
     }
+  }
+
+  // Version restore handler (F5.4)
+  const handleVersionRestore = async (versionNumber: number) => {
+    if (!artifact) return
+
+    const response = await fetch(`/api/artifacts/${artifact.id}/versions/restore`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        versionNumber,
+        restoreMode: 'full',
+      }),
+    })
+
+    if (response.ok) {
+      await fetchData()
+    }
+  }
+
+  // Conflict resolution handler (F5.5)
+  const handleConflictResolve = async (resolution: ConflictResolution) => {
+    if (resolution === 'overwrite') {
+      // Force save
+      setSaving(true)
+      try {
+        const response = await fetch(`/api/artifacts/${artifact?.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: editedName,
+            content: editedContent,
+            forceOverwrite: true,
+          }),
+        })
+
+        if (response.ok) {
+          await fetchData()
+          setEditing(false)
+        }
+      } finally {
+        setSaving(false)
+      }
+    } else if (resolution === 'cancel') {
+      // Discard changes and reload
+      await fetchData()
+      setEditing(false)
+    }
+
+    setShowConflictWarning(false)
+    setConflictInfo(null)
   }
 
   const handleSubmitForReview = async () => {
@@ -436,16 +519,20 @@ export default function ArtifactDetailPage() {
 
       {/* Metadata */}
       <div className="grid gap-4 md:grid-cols-4">
-        <Card>
+        <Card
+          className="cursor-pointer hover:shadow-md transition-shadow"
+          onClick={() => setVersionHistoryOpen(true)}
+        >
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-purple-100">
                 <History className="h-5 w-5 text-purple-600" />
               </div>
-              <div>
+              <div className="flex-1">
                 <p className="text-2xl font-semibold text-slate-900">v{artifact.version}</p>
-                <p className="text-sm text-slate-500">Version</p>
+                <p className="text-sm text-slate-500">Version History →</p>
               </div>
+              <EditingBadge isEditing={editing} hasLock={false} />
             </div>
           </CardContent>
         </Card>
@@ -528,6 +615,26 @@ export default function ArtifactDetailPage() {
             </pre>
           </CardContent>
         </Card>
+      )}
+
+      {/* Version History Panel (F5.2) */}
+      <VersionHistoryPanel
+        artifactId={artifact.id}
+        currentVersion={artifact.version}
+        isOpen={versionHistoryOpen}
+        onClose={() => setVersionHistoryOpen(false)}
+        onRestore={handleVersionRestore}
+      />
+
+      {/* Concurrent Edit Warning (F5.5) */}
+      {conflictInfo && (
+        <ConcurrentEditWarning
+          isOpen={showConflictWarning}
+          conflict={conflictInfo}
+          artifactName={artifact.name}
+          onResolve={handleConflictResolve}
+          onClose={() => setShowConflictWarning(false)}
+        />
       )}
     </div>
   )
