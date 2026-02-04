@@ -1,7 +1,8 @@
 'use client'
 
-import { Bell, Search } from 'lucide-react'
+import { Bell, Search, Command } from 'lucide-react'
 import { HelpButton } from '@/components/guidance'
+import { useSearch } from '@/components/search/search-provider'
 
 interface HeaderProps {
   user?: {
@@ -12,18 +13,25 @@ interface HeaderProps {
 }
 
 export function Header({ user }: HeaderProps) {
+  const { open } = useSearch()
+
   return (
     <header className="sticky top-0 z-40 flex h-16 items-center justify-between border-b border-slate-200 bg-white px-6">
-      {/* Search */}
+      {/* Search - Click to open Command Palette */}
       <div className="flex items-center flex-1 max-w-md">
-        <div className="relative w-full">
+        <button
+          onClick={open}
+          className="relative w-full h-10 pl-10 pr-4 rounded-lg border border-slate-200 bg-slate-50 text-sm text-left text-slate-400 hover:bg-slate-100 hover:border-slate-300 transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+        >
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-          <input
-            type="search"
-            placeholder="Search clients, engagements..."
-            className="w-full h-10 pl-10 pr-4 rounded-lg border border-slate-200 bg-slate-50 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent focus:bg-white"
-          />
-        </div>
+          <span>Search clients, engagements...</span>
+          <span className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 text-xs text-slate-400">
+            <kbd className="px-1.5 py-0.5 rounded bg-slate-200 font-mono">
+              <Command className="h-3 w-3 inline" />
+            </kbd>
+            <kbd className="px-1.5 py-0.5 rounded bg-slate-200 font-mono">K</kbd>
+          </span>
+        </button>
       </div>
 
       {/* Right side */}
