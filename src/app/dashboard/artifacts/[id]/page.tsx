@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -24,6 +24,7 @@ import {
 import Link from 'next/link'
 import { format } from 'date-fns'
 import { getTemplate, type Template, type TemplateField } from '@/lib/templates'
+import { PDFExportButton } from '@/components/artifacts/pdf-export-button'
 
 interface Artifact {
   id: string
@@ -96,6 +97,7 @@ export default function ArtifactDetailPage() {
 
   useEffect(() => {
     fetchData()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.id])
 
   const handleFieldChange = (fieldId: string, value: unknown) => {
@@ -379,6 +381,14 @@ export default function ArtifactDetailPage() {
             </>
           ) : (
             <>
+              {/* PDF Export - available for all statuses */}
+              <PDFExportButton
+                artifactId={artifact.id}
+                artifactName={artifact.name}
+                variant="outline"
+                showSettings={true}
+              />
+
               {artifact.status === 'draft' && (
                 <>
                   <Button variant="outline" onClick={() => setEditing(true)}>

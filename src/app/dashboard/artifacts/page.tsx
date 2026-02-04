@@ -9,6 +9,7 @@ import { FileText, Search, Eye, Plus, Loader2 } from 'lucide-react'
 import Link from 'next/link'
 import { formatDistanceToNow } from 'date-fns'
 import { TEMPLATES } from '@/lib/templates'
+import { PDFExportButton, BatchExportPanel } from '@/components/artifacts/pdf-export-button'
 
 interface Artifact {
   id: string
@@ -39,6 +40,21 @@ export default function ArtifactsPage() {
   const [artifacts, setArtifacts] = useState<Artifact[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState({ template: '', status: '', search: '' })
+  const [selectedArtifacts, setSelectedArtifacts] = useState<string[]>([])
+
+  const toggleArtifactSelection = (id: string) => {
+    setSelectedArtifacts((prev) =>
+      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
+    )
+  }
+
+  const toggleSelectAll = () => {
+    if (selectedArtifacts.length === filteredArtifacts.length) {
+      setSelectedArtifacts([])
+    } else {
+      setSelectedArtifacts(filteredArtifacts.map((a) => a.id))
+    }
+  }
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -63,6 +79,7 @@ export default function ArtifactsPage() {
     }
 
     fetchArtifacts()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const filteredArtifacts = artifacts.filter((a) => {
@@ -157,6 +174,14 @@ export default function ArtifactsPage() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-slate-200">
+                    <th className="py-3 px-4 w-10">
+                      <input
+                        type="checkbox"
+                        checked={selectedArtifacts.length === filteredArtifacts.length && filteredArtifacts.length > 0}
+                        onChange={toggleSelectAll}
+                        className="rounded border-slate-300 text-teal-600 focus:ring-teal-500"
+                      />
+                    </th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-slate-600">Artifact</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-slate-600">Engagement</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-slate-600">Sensitivity</th>
@@ -169,6 +194,14 @@ export default function ArtifactsPage() {
                 <tbody>
                   {filteredArtifacts.map((artifact) => (
                     <tr key={artifact.id} className="border-b border-slate-100 hover:bg-slate-50">
+                      <td className="py-3 px-4">
+                        <input
+                          type="checkbox"
+                          checked={selectedArtifacts.includes(artifact.id)}
+                          onChange={() => toggleArtifactSelection(artifact.id)}
+                          className="rounded border-slate-300 text-teal-600 focus:ring-teal-500"
+                        />
+                      </td>
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-3">
                           <div className="p-2 rounded-lg bg-slate-100">
@@ -207,6 +240,11 @@ export default function ArtifactsPage() {
                       </td>
                       <td className="py-3 px-4">
                         <div className="flex items-center justify-end gap-2">
+                          <PDFExportButton
+                            artifactId={artifact.id}
+                            artifactName={artifact.name}
+                            variant="icon"
+                          />
                           <Link href={`/dashboard/artifacts/${artifact.id}`}>
                             <Button variant="ghost" size="sm">
                               <Eye className="h-4 w-4 mr-1" />
@@ -265,6 +303,12 @@ export default function ArtifactsPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Batch Export Panel - shows when artifacts are selected */}
+      <BatchExportPanel
+        selectedArtifactIds={selectedArtifacts}
+        onClearSelection={() => setSelectedArtifacts([])}
+      />
     </div>
   )
 }
