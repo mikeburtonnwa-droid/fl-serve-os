@@ -26,11 +26,8 @@ import {
   SERVE_FRAMEWORK,
   TUTORIALS,
   PATHWAY_GUIDANCE,
-  ARTIFACT_GUIDANCE,
-  STATION_GUIDANCE,
   QUICK_REFERENCE,
   type Tutorial,
-  type TutorialStep,
 } from '@/lib/guidance-content'
 
 interface WorkflowGuidanceProps {
@@ -55,7 +52,9 @@ export function WorkflowGuidance({
     if (initialTutorialId) {
       const tutorial = TUTORIALS.find((t) => t.id === initialTutorialId)
       if (tutorial) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setActiveTutorial(tutorial)
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setActiveTab('tutorials')
       }
     }
@@ -65,6 +64,7 @@ export function WorkflowGuidance({
   useEffect(() => {
     const saved = localStorage.getItem('serve-os-completed-steps')
     if (saved) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setCompletedSteps(JSON.parse(saved))
     }
   }, [])

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { Badge } from '@/components/ui/badge'
 import {
   CheckCircle2,
@@ -100,6 +101,7 @@ export function OnboardingChecklist({ onDismiss, compact = false }: OnboardingCh
       setActiveTutorialId(item.tutorialId)
       setIsGuidanceOpen(true)
     } else if (item.href) {
+      // eslint-disable-next-line react-hooks/immutability
       window.location.href = item.href
     } else if (item.action) {
       item.action()

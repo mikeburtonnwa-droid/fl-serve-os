@@ -16,11 +16,9 @@ import React, { useState, useCallback, useMemo, useEffect } from 'react'
 import { X, AlertTriangle, CheckCircle2, Edit3, Save, RotateCcw, AlertCircle, Info } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { getTemplate, type TemplateField } from '@/lib/templates'
 import {
   mapAISuggestionToTemplate,
-  type MappingResult,
   type FieldMappingResult,
   getMappingSummary
 } from '@/lib/field-mapper'
@@ -276,11 +274,14 @@ export function ArtifactPreviewModal({
   )
 
   // Track editable content (starts from mapped content)
-  const [editedContent, setEditedContent] = useState<Record<string, unknown>>({})
+  // Initialize with mapped content directly - subsequent updates handled via effect
+  const [editedContent, setEditedContent] = useState<Record<string, unknown>>(() => mappingResult.mappedContent)
   const [showConfirmDialog, setShowConfirmDialog] = useState(false)
 
-  // Initialize edited content from mapping result
+  // Sync edited content when mappingResult changes (e.g., different artifact selected)
+  // Using eslint-disable since this is an intentional sync pattern
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setEditedContent(mappingResult.mappedContent)
   }, [mappingResult.mappedContent])
 

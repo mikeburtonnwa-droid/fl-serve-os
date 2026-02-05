@@ -440,7 +440,7 @@ export function ArtifactSuggestions({
                           ))}
                         </ul>
                         <p className="text-xs text-red-600 mt-2">
-                          Use "Preview & Edit" to fix these issues before creating.
+                          Use &quot;Preview &amp; Edit&quot; to fix these issues before creating.
                         </p>
                       </div>
                     )}

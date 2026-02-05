@@ -250,14 +250,11 @@ export function MarkdownRenderer({
   collapsibleJson = true,
   enableCopy = true,
 }: MarkdownRendererProps) {
-  const [renderError, setRenderError] = useState<string | null>(null);
-
-  // Handle null/undefined/empty content (US-002)
-  if (content === null || content === undefined || content.trim() === '') {
-    return <EmptyState />;
-  }
+  // Check for empty content - used by conditional rendering below
+  const isEmpty = content === null || content === undefined || content.trim() === '';
 
   // Create custom components with error boundary
+  // Must be called unconditionally to follow rules of hooks
   const components = useMemo(() => ({
     // Headings with proper hierarchy (US-001)
     h1: ({ children, ...props }: React.HTMLAttributes<HTMLHeadingElement>) => (
@@ -414,31 +411,27 @@ export function MarkdownRenderer({
     ),
   }), [collapsibleJson, enableCopy]);
 
-  // Render with error handling (US-003)
-  try {
-    return (
-      <div className={clsx(
-        'markdown-content prose prose-slate dark:prose-invert max-w-none',
-        className
-      )}>
-        <ReactMarkdown
-          remarkPlugins={[remarkGfm]}
-          rehypePlugins={[rehypeHighlight]}
-          components={components}
-        >
-          {content}
-        </ReactMarkdown>
-      </div>
-    );
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown parsing error';
-
-    // Log error for debugging
-    console.error('Markdown rendering error:', error);
-
-    // Return error state with raw content
-    return <ErrorState content={content} error={errorMessage} />;
+  // Handle empty content (US-002)
+  if (isEmpty) {
+    return <EmptyState />;
   }
+
+  // Render with error boundary approach (US-003)
+  // Note: Try/catch around JSX doesn't catch React errors - use error boundaries for production
+  return (
+    <div className={clsx(
+      'markdown-content prose prose-slate dark:prose-invert max-w-none',
+      className
+    )}>
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        rehypePlugins={[rehypeHighlight]}
+        components={components}
+      >
+        {content}
+      </ReactMarkdown>
+    </div>
+  );
 }
 
 // =============================================================================

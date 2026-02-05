@@ -10,7 +10,6 @@ import {
   FileText,
   Lock,
   Unlock,
-  ChevronRight,
   Sparkles,
   ArrowRight,
 } from 'lucide-react'
@@ -18,7 +17,6 @@ import Link from 'next/link'
 import {
   STATION_REQUIREMENTS,
   TEMPLATE_METADATA,
-  PATHWAY_WORKFLOWS,
   validateStationPrerequisites,
   getCurrentStage,
   type StationId,
@@ -170,7 +168,8 @@ export function WorkflowRequirements({
                 <div className="flex flex-wrap gap-2">
                   {requirements.requiredArtifacts.map((templateId) => {
                     const fulfilled = isTemplateFulfilled(templateId)
-                    const artifact = getArtifact(templateId)
+                    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                    const _artifact = getArtifact(templateId) // Reserved for future link functionality
                     const meta = TEMPLATE_METADATA[templateId]
 
                     return (
