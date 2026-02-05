@@ -67,7 +67,7 @@ CREATE POLICY "Users can view relevant clone records"
         EXISTS (
             SELECT 1 FROM engagements e
             WHERE (e.id = source_engagement_id OR e.id = target_engagement_id)
-            AND (e.created_by = auth.uid() OR e.primary_consultant = auth.uid())
+            AND (e.created_by = auth.uid() OR e.consultant_id = auth.uid())
         )
     );
 
@@ -78,7 +78,7 @@ CREATE POLICY "Users can create clone records for owned engagements"
         EXISTS (
             SELECT 1 FROM engagements e
             WHERE e.id = source_engagement_id
-            AND (e.created_by = auth.uid() OR e.primary_consultant = auth.uid())
+            AND (e.created_by = auth.uid() OR e.consultant_id = auth.uid())
         )
     );
 

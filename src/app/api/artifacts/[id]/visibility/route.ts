@@ -62,7 +62,7 @@ export async function PATCH(
         engagement:engagements(
           id,
           created_by,
-          primary_consultant
+          consultant_id
         )
       `)
       .eq('id', artifactId)
@@ -79,12 +79,12 @@ export async function PATCH(
     const engagement = artifact.engagement as unknown as {
       id: string
       created_by: string
-      primary_consultant: string
+      consultant_id: string
     }
 
     if (
       engagement.created_by !== user?.id &&
-      engagement.primary_consultant !== user?.id
+      engagement.consultant_id !== user?.id
     ) {
       return NextResponse.json(
         { error: 'Not authorized to change visibility' },

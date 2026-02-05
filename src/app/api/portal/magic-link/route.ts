@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
         status,
         client:clients(id, name),
         created_by,
-        primary_consultant
+        consultant_id
       `)
       .eq('id', engagementId)
       .single()

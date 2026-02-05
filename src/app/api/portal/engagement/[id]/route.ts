@@ -65,7 +65,7 @@ export async function GET(
         created_at,
         updated_at,
         client:clients(id, name),
-        primary_consultant
+        consultant_id
       `)
       .eq('id', engagementId)
       .single()
@@ -81,7 +81,7 @@ export async function GET(
     const { data: consultant } = await supabase
       .from('users')
       .select('id, full_name, email')
-      .eq('id', engagement.primary_consultant)
+      .eq('id', engagement.consultant_id)
       .single()
 
     // Fetch only client-visible artifacts

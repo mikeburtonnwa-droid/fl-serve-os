@@ -137,7 +137,7 @@ CREATE POLICY "Consultants can view own engagement magic links"
         EXISTS (
             SELECT 1 FROM engagements e
             WHERE e.id = engagement_id
-            AND (e.created_by = auth.uid() OR e.primary_consultant = auth.uid())
+            AND (e.created_by = auth.uid() OR e.consultant_id = auth.uid())
         )
     );
 
@@ -147,7 +147,7 @@ CREATE POLICY "Consultants can create magic links for own engagements"
         EXISTS (
             SELECT 1 FROM engagements e
             WHERE e.id = engagement_id
-            AND (e.created_by = auth.uid() OR e.primary_consultant = auth.uid())
+            AND (e.created_by = auth.uid() OR e.consultant_id = auth.uid())
         )
     );
 
@@ -157,7 +157,7 @@ CREATE POLICY "Consultants can update own engagement magic links"
         EXISTS (
             SELECT 1 FROM engagements e
             WHERE e.id = engagement_id
-            AND (e.created_by = auth.uid() OR e.primary_consultant = auth.uid())
+            AND (e.created_by = auth.uid() OR e.consultant_id = auth.uid())
         )
     );
 
@@ -170,7 +170,7 @@ CREATE POLICY "Consultants can view portal sessions for own engagements"
         EXISTS (
             SELECT 1 FROM engagements e
             WHERE e.id = engagement_id
-            AND (e.created_by = auth.uid() OR e.primary_consultant = auth.uid())
+            AND (e.created_by = auth.uid() OR e.consultant_id = auth.uid())
         )
     );
 
@@ -184,7 +184,7 @@ CREATE POLICY "Consultants can manage artifact visibility"
             SELECT 1 FROM artifacts a
             JOIN engagements e ON a.engagement_id = e.id
             WHERE a.id = artifact_id
-            AND (e.created_by = auth.uid() OR e.primary_consultant = auth.uid())
+            AND (e.created_by = auth.uid() OR e.consultant_id = auth.uid())
         )
     );
 
@@ -197,7 +197,7 @@ CREATE POLICY "Consultants can view activity for own engagements"
         EXISTS (
             SELECT 1 FROM engagements e
             WHERE e.id = engagement_id
-            AND (e.created_by = auth.uid() OR e.primary_consultant = auth.uid())
+            AND (e.created_by = auth.uid() OR e.consultant_id = auth.uid())
         )
     );
 

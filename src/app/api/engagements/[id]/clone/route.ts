@@ -227,7 +227,7 @@ export async function POST(
         status: 'active',
         pathway: config.preservePathway ? sourceEngagement.pathway : null,
         created_by: user?.id,
-        primary_consultant: user?.id,
+        consultant_id: user?.id,
         clone_metadata: {
           cloned_from: sourceEngagementId,
           cloned_at: new Date().toISOString(),
