@@ -62,8 +62,25 @@ export async function POST(request: NextRequest) {
     }
 
     // Fetch client data
-    let client: { id: string; name: string; industry?: string; intake_score?: number; intake_responses?: Record<string, number> } | null = null
-    let engagement: { id: string; name: string; pathway: string; status: string; intake_score?: number; intake_responses?: Record<string, number>; client_id: string } | null = null
+    interface ClientData {
+      id: string
+      name: string
+      industry?: string
+      intake_score?: number
+      intake_responses?: Record<string, number>
+    }
+    interface EngagementData {
+      id: string
+      name: string
+      pathway: string
+      status: string
+      intake_score?: number
+      intake_responses?: Record<string, number>
+      client_id: string
+    }
+
+    let client: ClientData | null = null
+    let engagement: EngagementData | null = null
 
     if (clientId) {
       const { data, error } = await supabase
@@ -75,7 +92,7 @@ export async function POST(request: NextRequest) {
       if (error || !data) {
         return NextResponse.json({ error: 'Client not found' }, { status: 404 })
       }
-      client = data
+      client = data as ClientData
     }
 
     if (engagementId) {
@@ -88,10 +105,22 @@ export async function POST(request: NextRequest) {
       if (error || !data) {
         return NextResponse.json({ error: 'Engagement not found' }, { status: 404 })
       }
-      engagement = data
+      engagement = {
+        id: data.id,
+        name: data.name,
+        pathway: data.pathway,
+        status: data.status,
+        intake_score: data.intake_score,
+        intake_responses: data.intake_responses,
+        client_id: data.client_id,
+      }
       // If client wasn't specified, get it from engagement
       if (!client && data.client) {
-        client = data.client as typeof client
+        // Supabase returns joined data - handle both array and object forms
+        const clientData = Array.isArray(data.client) ? data.client[0] : data.client
+        if (clientData) {
+          client = clientData as ClientData
+        }
       }
     }
 

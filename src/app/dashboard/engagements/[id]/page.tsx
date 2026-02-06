@@ -617,6 +617,7 @@ export default function EngagementDetailPage() {
           {selectedStationRun.output_data?.suggestedArtifacts &&
             selectedStationRun.output_data.suggestedArtifacts.length > 0 && (
               <ArtifactSuggestions
+                clientId={engagement.client?.id || ''}
                 engagementId={engagement.id}
                 stationId={selectedStationRun.station_id}
                 suggestions={selectedStationRun.output_data.suggestedArtifacts}
