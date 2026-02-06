@@ -222,15 +222,24 @@ export default function EngagementDetailPage() {
     }))
   }, [artifacts, stationRuns])
 
-  // Find station runs with uncreated artifact suggestions
+  // Find the LATEST station run per station that has uncreated artifact suggestions
+  // Only show the most recent run's suggestions to avoid confusion from duplicate runs
   const pendingArtifactSuggestions = useMemo(() => {
     const existingTemplateIds = new Set(artifacts.map(a => a.template_id))
 
-    return stationRuns
-      .filter(run =>
-        run.output_data?.suggestedArtifacts &&
-        run.output_data.suggestedArtifacts.length > 0
-      )
+    // Group runs by station_id and get only the latest successful run for each
+    const latestRunsByStation = new Map<string, StationRun>()
+    for (const run of stationRuns) {
+      if (!['complete', 'approved'].includes(run.status)) continue
+      if (!run.output_data?.suggestedArtifacts?.length) continue
+
+      const existing = latestRunsByStation.get(run.station_id)
+      if (!existing || new Date(run.created_at) > new Date(existing.created_at)) {
+        latestRunsByStation.set(run.station_id, run)
+      }
+    }
+
+    return Array.from(latestRunsByStation.values())
       .map(run => {
         const uncreated = (run.output_data?.suggestedArtifacts || []).filter(
           suggestion => !existingTemplateIds.has(suggestion.templateId)

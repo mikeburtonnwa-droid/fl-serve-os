@@ -511,6 +511,7 @@ function isCurrentStateMapProcess(obj: Record<string, unknown>): boolean {
 }
 
 // Extract structured artifact suggestions from station output
+// IMPORTANT: Creates ONE consolidated artifact per template type, not one per process
 function extractSuggestedArtifacts(
   content: string,
   stationId: StationId
@@ -522,44 +523,31 @@ function extractSuggestedArtifacts(
   const jsonBlockRegex = /```json\s*([\s\S]*?)```/g
   let match
 
+  // Collect all processes for TPL-02 to consolidate into ONE artifact
+  const collectedProcesses: Record<string, unknown>[] = []
+
   while ((match = jsonBlockRegex.exec(content)) !== null) {
     try {
       const jsonContent = JSON.parse(match[1])
 
-      // Try to determine which template this JSON is for based on structure
-      // TPL-02: Current State Map - handle multiple formats
+      // TPL-02: Current State Map - collect all processes to consolidate
       if (outputTemplates.includes('TPL-02')) {
         // Format 1: { "processes": [...] }
         if (jsonContent.processes && Array.isArray(jsonContent.processes)) {
-          for (const process of jsonContent.processes) {
-            suggestions.push({
-              templateId: 'TPL-02',
-              suggestedContent: process,
-              action: 'create',
-            })
-          }
+          collectedProcesses.push(...jsonContent.processes)
           continue
         }
         // Format 2: Array of processes directly [...]
         if (Array.isArray(jsonContent)) {
-          for (const item of jsonContent) {
-            if (isCurrentStateMapProcess(item)) {
-              suggestions.push({
-                templateId: 'TPL-02',
-                suggestedContent: item,
-                action: 'create',
-              })
-            }
+          const processes = jsonContent.filter(item => isCurrentStateMapProcess(item))
+          if (processes.length > 0) {
+            collectedProcesses.push(...processes)
+            continue
           }
-          if (suggestions.length > 0) continue
         }
         // Format 3: Single process object
         if (isCurrentStateMapProcess(jsonContent)) {
-          suggestions.push({
-            templateId: 'TPL-02',
-            suggestedContent: jsonContent,
-            action: 'create',
-          })
+          collectedProcesses.push(jsonContent)
           continue
         }
       }
@@ -607,6 +595,19 @@ function extractSuggestedArtifacts(
       // Invalid JSON, log and skip
       console.warn('Failed to parse JSON block in station output:', e)
     }
+  }
+
+  // Consolidate all collected processes into ONE Current State Map artifact
+  if (collectedProcesses.length > 0 && outputTemplates.includes('TPL-02')) {
+    suggestions.push({
+      templateId: 'TPL-02',
+      suggestedContent: {
+        processes: collectedProcesses,
+        process_count: collectedProcesses.length,
+        summary: `Current state analysis identified ${collectedProcesses.length} key business process${collectedProcesses.length !== 1 ? 'es' : ''} for optimization.`,
+      },
+      action: 'create',
+    })
   }
 
   console.log(`Extracted ${suggestions.length} artifact suggestions from ${stationId} output`)

@@ -85,12 +85,49 @@ export function ArtifactSuggestions({
 
   // Pre-compute mapping results for all suggestions
   const mappingResults = useMemo(() => {
-    return suggestions.map(suggestion => ({
-      suggestion,
-      mapping: mapAISuggestionToTemplate(suggestion.templateId, suggestion.suggestedContent),
-      summary: getMappingSummary(mapAISuggestionToTemplate(suggestion.templateId, suggestion.suggestedContent)),
-      validation: canCreateArtifact(mapAISuggestionToTemplate(suggestion.templateId, suggestion.suggestedContent)),
-    }))
+    return suggestions.map(suggestion => {
+      // Check if this is a consolidated format (e.g., TPL-02 with processes array)
+      const isConsolidated = suggestion.templateId === 'TPL-02' &&
+        suggestion.suggestedContent.processes &&
+        Array.isArray(suggestion.suggestedContent.processes)
+
+      if (isConsolidated) {
+        // For consolidated formats, return a simplified result
+        const processCount = (suggestion.suggestedContent.processes as unknown[]).length
+        return {
+          suggestion,
+          mapping: {
+            templateId: suggestion.templateId,
+            isValid: true,
+            mappedContent: suggestion.suggestedContent,
+            fieldResults: [],
+            missingRequired: [],
+            warnings: [],
+            errors: [],
+          },
+          summary: {
+            totalFields: processCount,
+            mappedFields: processCount,
+            coercedFields: 0,
+            missingFields: 0,
+            invalidFields: 0,
+          },
+          validation: { canCreate: true, blockers: [], warnings: [] },
+          isConsolidated: true,
+          processCount,
+        }
+      }
+
+      const mapping = mapAISuggestionToTemplate(suggestion.templateId, suggestion.suggestedContent)
+      return {
+        suggestion,
+        mapping,
+        summary: getMappingSummary(mapping),
+        validation: canCreateArtifact(mapping),
+        isConsolidated: false,
+        processCount: 0,
+      }
+    })
   }, [suggestions])
 
   // Create single artifact
@@ -99,10 +136,22 @@ export function ArtifactSuggestions({
     content?: Record<string, unknown>
   ): Promise<CreationResult> => {
     const meta = TEMPLATE_METADATA[suggestion.templateId]
-    const mappingResult = mapAISuggestionToTemplate(
-      suggestion.templateId,
-      content || suggestion.suggestedContent
-    )
+    const finalContent = content || suggestion.suggestedContent
+
+    // For consolidated artifacts (like TPL-02 with processes array), store directly
+    // without going through the field mapper which expects single-process fields
+    const isConsolidatedFormat = suggestion.templateId === 'TPL-02' &&
+      finalContent.processes && Array.isArray(finalContent.processes)
+
+    let artifactContent: Record<string, unknown>
+    if (isConsolidatedFormat) {
+      // Store the consolidated format directly
+      artifactContent = finalContent
+    } else {
+      // Use field mapper for standard single-item artifacts
+      const mappingResult = mapAISuggestionToTemplate(suggestion.templateId, finalContent)
+      artifactContent = mappingResult.mappedContent
+    }
 
     try {
       // Check if artifact already exists for this template
@@ -118,9 +167,15 @@ export function ArtifactSuggestions({
       let version = 1
       let artifactName = meta.name
 
+      // For consolidated Current State Map, add process count to name
+      if (isConsolidatedFormat && (finalContent.processes as unknown[]).length > 0) {
+        const processCount = (finalContent.processes as unknown[]).length
+        artifactName = `${meta.name} (${processCount} processes)`
+      }
+
       if (existing && suggestion.action === 'update') {
         version = existing.version + 1
-        artifactName = `${meta.name} (v${version})`
+        artifactName = `${artifactName} v${version}`
       }
 
       const { data: artifact, error } = await supabase
@@ -129,7 +184,7 @@ export function ArtifactSuggestions({
           engagement_id: engagementId,
           template_id: suggestion.templateId,
           name: artifactName,
-          content: mappingResult.mappedContent,
+          content: artifactContent,
           status: 'draft',
           sensitivity_tier: meta.tier,
           version,
@@ -291,7 +346,7 @@ export function ArtifactSuggestions({
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
-          {mappingResults.map(({ suggestion, mapping, summary, validation }) => {
+          {mappingResults.map(({ suggestion, mapping, summary, validation, isConsolidated, processCount }) => {
             const meta = TEMPLATE_METADATA[suggestion.templateId]
             const isCreated = created.has(suggestion.templateId)
             const isExpanded = expanded === suggestion.templateId
@@ -326,7 +381,10 @@ export function ArtifactSuggestions({
                     </div>
                     <div>
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-medium text-slate-900">{meta.name}</span>
+                        <span className="font-medium text-slate-900">
+                          {meta.name}
+                          {isConsolidated && processCount > 0 && ` (${processCount} processes)`}
+                        </span>
                         <Badge variant={suggestion.action === 'update' ? 'info' : 'default'} size="sm">
                           {suggestion.action === 'update' ? 'Update' : 'New'}
                         </Badge>
@@ -335,18 +393,26 @@ export function ArtifactSuggestions({
                         </Badge>
                       </div>
                       <div className="flex items-center gap-2 mt-0.5">
-                        <span className="text-xs text-slate-500">
-                          {summary.mappedFields}/{summary.totalFields} fields mapped
-                        </span>
-                        {summary.coercedFields > 0 && (
-                          <span className="text-xs text-yellow-600">
-                            • {summary.coercedFields} auto-corrected
+                        {isConsolidated ? (
+                          <span className="text-xs text-slate-500">
+                            Contains {processCount} business process{processCount !== 1 ? 'es' : ''} ready to create
                           </span>
-                        )}
-                        {summary.missingFields > 0 && mapping.missingRequired.length > 0 && (
-                          <span className="text-xs text-red-600">
-                            • {mapping.missingRequired.length} required missing
-                          </span>
+                        ) : (
+                          <>
+                            <span className="text-xs text-slate-500">
+                              {summary.mappedFields}/{summary.totalFields} fields mapped
+                            </span>
+                            {summary.coercedFields > 0 && (
+                              <span className="text-xs text-yellow-600">
+                                • {summary.coercedFields} auto-corrected
+                              </span>
+                            )}
+                            {summary.missingFields > 0 && mapping.missingRequired.length > 0 && (
+                              <span className="text-xs text-red-600">
+                                • {mapping.missingRequired.length} required missing
+                              </span>
+                            )}
+                          </>
                         )}
                       </div>
                     </div>
