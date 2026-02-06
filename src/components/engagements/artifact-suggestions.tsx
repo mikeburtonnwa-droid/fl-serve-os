@@ -43,10 +43,12 @@ interface SuggestedArtifact {
   templateId: TemplateId
   suggestedContent: Record<string, unknown>
   action: 'create' | 'update'
+  scope?: 'client' | 'engagement'  // Where to save the artifact
 }
 
 interface ArtifactSuggestionsProps {
-  engagementId: string
+  clientId: string              // Required: artifacts may be saved to client
+  engagementId?: string         // Optional: for engagement-level artifacts
   stationId: string
   suggestions: SuggestedArtifact[]
   onArtifactCreated?: () => void
@@ -63,6 +65,7 @@ interface CreationResult {
 // =============================================================================
 
 export function ArtifactSuggestions({
+  clientId,
   engagementId,
   stationId,
   suggestions,
@@ -138,6 +141,9 @@ export function ArtifactSuggestions({
     const meta = TEMPLATE_METADATA[suggestion.templateId]
     const finalContent = content || suggestion.suggestedContent
 
+    // Determine scope: use suggestion.scope if provided, otherwise derive from template metadata
+    const artifactScope = suggestion.scope || meta.scope || 'engagement'
+
     // For consolidated artifacts (like TPL-02 with processes array), store directly
     // without going through the field mapper which expects single-process fields
     const isConsolidatedFormat = suggestion.templateId === 'TPL-02' &&
@@ -155,14 +161,21 @@ export function ArtifactSuggestions({
 
     try {
       // Check if artifact already exists for this template
-      const { data: existing } = await supabase
+      // Look in the correct scope (client-level or engagement-level)
+      let existingQuery = supabase
         .from('artifacts')
         .select('id, version')
-        .eq('engagement_id', engagementId)
         .eq('template_id', suggestion.templateId)
         .order('version', { ascending: false })
         .limit(1)
-        .single()
+
+      if (artifactScope === 'client') {
+        existingQuery = existingQuery.eq('client_id', clientId)
+      } else {
+        existingQuery = existingQuery.eq('engagement_id', engagementId)
+      }
+
+      const { data: existing } = await existingQuery.single()
 
       let version = 1
       let artifactName = meta.name
@@ -178,18 +191,30 @@ export function ArtifactSuggestions({
         artifactName = `${artifactName} v${version}`
       }
 
+      // Build insert data based on scope
+      const insertData: Record<string, unknown> = {
+        template_id: suggestion.templateId,
+        name: artifactName,
+        content: artifactContent,
+        status: 'draft',
+        sensitivity_tier: meta.tier,
+        scope: artifactScope,
+        version,
+        source_station: stationId,
+      }
+
+      // Set the correct foreign key based on scope
+      if (artifactScope === 'client') {
+        insertData.client_id = clientId
+        insertData.engagement_id = null
+      } else {
+        insertData.engagement_id = engagementId
+        insertData.client_id = null
+      }
+
       const { data: artifact, error } = await supabase
         .from('artifacts')
-        .insert({
-          engagement_id: engagementId,
-          template_id: suggestion.templateId,
-          name: artifactName,
-          content: artifactContent,
-          status: 'draft',
-          sensitivity_tier: meta.tier,
-          version,
-          source_station: stationId,
-        })
+        .insert(insertData)
         .select('id')
         .single()
 
@@ -203,7 +228,7 @@ export function ArtifactSuggestions({
         error: err instanceof Error ? err.message : 'Unknown error'
       }
     }
-  }, [engagementId, stationId, supabase])
+  }, [clientId, engagementId, stationId, supabase])
 
   // Handle single artifact creation
   const handleCreate = useCallback(async (suggestion: SuggestedArtifact) => {

@@ -4,11 +4,37 @@
 export type StationId = 'S-01' | 'S-02' | 'S-03'
 export type TemplateId = 'TPL-01' | 'TPL-02' | 'TPL-03' | 'TPL-05' | 'TPL-09' | 'TPL-10' | 'TPL-12'
 export type Pathway = 'knowledge_spine' | 'roi_audit' | 'workflow_sprint'
+export type ArtifactScope = 'client' | 'engagement'
+
+// =============================================================================
+// ARTIFACT SCOPE DEFINITIONS
+// Determines whether an artifact belongs to the Client or the Engagement
+// =============================================================================
+export const ARTIFACT_SCOPES: Record<TemplateId, ArtifactScope> = {
+  'TPL-01': 'client',      // Discovery Brief - describes the CLIENT's business
+  'TPL-02': 'client',      // Current State Map - CLIENT's processes (doesn't change per engagement)
+  'TPL-03': 'engagement',  // Future State Design - specific to THIS engagement's scope
+  'TPL-05': 'engagement',  // Implementation Plan - specific to THIS engagement
+  'TPL-09': 'engagement',  // ROI Calculator - specific to THIS engagement's scope
+  'TPL-10': 'engagement',  // Client Handoff - deliverable for THIS engagement
+  'TPL-12': 'engagement',  // Case Study - about THIS engagement
+}
+
+// =============================================================================
+// STATION SCOPE DEFINITIONS
+// Determines whether a station operates at Client or Engagement level
+// =============================================================================
+export const STATION_SCOPES: Record<StationId, ArtifactScope> = {
+  'S-01': 'client',      // Discovery Station - analyzes CLIENT, outputs to CLIENT
+  'S-02': 'engagement',  // Scoping Station - creates engagement-specific deliverables
+  'S-03': 'engagement',  // QA Station - reviews engagement deliverables
+}
 
 export interface StationRequirement {
   stationId: StationId
   name: string
   description: string
+  scope: ArtifactScope             // Whether this station operates at client or engagement level
   requiredArtifacts: TemplateId[]  // Artifacts that MUST exist before running
   optionalArtifacts: TemplateId[]  // Artifacts that enhance the output if present
   outputArtifacts: TemplateId[]    // Artifacts this station generates/updates
@@ -30,25 +56,28 @@ export const STATION_REQUIREMENTS: Record<StationId, StationRequirement> = {
     stationId: 'S-01',
     name: 'Discovery Station',
     description: 'Analyzes client context and generates discovery insights',
-    requiredArtifacts: ['TPL-01'],  // Client Discovery Brief required
+    scope: 'client',                // Operates at CLIENT level
+    requiredArtifacts: ['TPL-01'],  // Client Discovery Brief required (client-level)
     optionalArtifacts: [],
-    outputArtifacts: ['TPL-02'],    // Generates Current State Map(s)
+    outputArtifacts: ['TPL-02'],    // Generates Current State Map (client-level)
     previousStation: undefined,     // First station - no prerequisite
   },
   'S-02': {
     stationId: 'S-02',
     name: 'Scoping Station',
     description: 'Creates project scope, implementation plan, and ROI analysis',
-    requiredArtifacts: ['TPL-01', 'TPL-02'],  // Need brief AND current state
+    scope: 'engagement',            // Operates at ENGAGEMENT level
+    requiredArtifacts: ['TPL-01', 'TPL-02'],  // Need client-level artifacts
     optionalArtifacts: [],
-    outputArtifacts: ['TPL-03', 'TPL-05', 'TPL-09'],  // Future State, Implementation Plan, ROI
-    previousStation: 'S-01',  // Must complete discovery first
+    outputArtifacts: ['TPL-03', 'TPL-05', 'TPL-09'],  // Engagement-level outputs
+    previousStation: 'S-01',  // Must complete discovery first (client must have Current State Map)
   },
   'S-03': {
     stationId: 'S-03',
     name: 'QA Station',
     description: 'Reviews and validates all T2 deliverables before client delivery',
-    requiredArtifacts: ['TPL-03', 'TPL-05'],  // Must have deliverables to review
+    scope: 'engagement',            // Operates at ENGAGEMENT level
+    requiredArtifacts: ['TPL-03', 'TPL-05'],  // Must have engagement deliverables to review
     optionalArtifacts: ['TPL-09', 'TPL-10'],  // ROI and handoff if available
     outputArtifacts: ['TPL-10'],  // Generates/validates Client Handoff
     previousStation: 'S-02',  // Must complete scoping first
@@ -185,53 +214,61 @@ export const PATHWAY_WORKFLOWS: Record<Pathway, WorkflowStage[]> = {
   ],
 }
 
-// Template metadata with stage information
+// Template metadata with stage and scope information
 export const TEMPLATE_METADATA: Record<TemplateId, {
   name: string
   stage: 'intake' | 'discovery' | 'scoping' | 'delivery' | 'handoff'
   tier: 'T1' | 'T2'
+  scope: ArtifactScope
   description: string
 }> = {
   'TPL-01': {
     name: 'Client Discovery Brief',
     stage: 'intake',
     tier: 'T1',
-    description: 'Initial client information and context',
+    scope: 'client',  // Belongs to the CLIENT
+    description: 'Initial client information and context - describes the business',
   },
   'TPL-02': {
     name: 'Current State Map',
     stage: 'discovery',
     tier: 'T1',
+    scope: 'client',  // Belongs to the CLIENT - their processes don't change per engagement
     description: 'Documented current processes and pain points',
   },
   'TPL-03': {
     name: 'Future State Design',
     stage: 'scoping',
     tier: 'T2',
+    scope: 'engagement',  // Specific to THIS engagement's scope
     description: 'Proposed AI-enhanced workflow design',
   },
   'TPL-05': {
     name: 'Implementation Plan',
     stage: 'scoping',
     tier: 'T2',
+    scope: 'engagement',  // Specific to THIS engagement
     description: 'Step-by-step implementation roadmap',
   },
   'TPL-09': {
     name: 'ROI Calculator',
     stage: 'scoping',
     tier: 'T2',
+    scope: 'engagement',  // ROI calculated for THIS engagement's scope
     description: 'Quantified value and return on investment',
   },
   'TPL-10': {
     name: 'Client Handoff',
     stage: 'handoff',
     tier: 'T2',
+    scope: 'engagement',  // Deliverable for THIS engagement
     description: 'Final delivery package for client',
   },
   'TPL-12': {
     name: 'Case Study',
     stage: 'handoff',
     tier: 'T2',
+    scope: 'engagement',  // About THIS engagement
     description: 'Marketing-ready success story',
   },
 }
@@ -243,13 +280,33 @@ export interface ValidationResult {
   warnings: string[]
 }
 
+export interface ArtifactInput {
+  template_id: string
+  status: string
+  scope?: ArtifactScope  // 'client' or 'engagement'
+}
+
+export interface StationInput {
+  station_id: string
+  status: string
+  scope?: ArtifactScope
+}
+
 /**
- * Validates whether a station can be run for an engagement
+ * Validates whether a station can be run
+ *
+ * For client-level stations (S-01): Check client artifacts
+ * For engagement-level stations (S-02, S-03): Check both client and engagement artifacts
+ *
+ * @param stationId - The station to validate
+ * @param clientArtifacts - Artifacts belonging to the client
+ * @param engagementArtifacts - Artifacts belonging to the engagement (optional for S-01)
+ * @param completedStations - Previously completed station runs
  */
 export function validateStationPrerequisites(
   stationId: StationId,
-  existingArtifacts: { template_id: string; status: string }[],
-  completedStations: { station_id: string; status: string }[]
+  existingArtifacts: ArtifactInput[],
+  completedStations: StationInput[]
 ): ValidationResult {
   const requirements = STATION_REQUIREMENTS[stationId]
   const result: ValidationResult = {
@@ -261,23 +318,40 @@ export function validateStationPrerequisites(
 
   // Check required artifacts exist and are approved (or at least draft for T1)
   for (const templateId of requirements.requiredArtifacts) {
+    const requiredScope = ARTIFACT_SCOPES[templateId]
     const artifact = existingArtifacts.find(
       (a) => a.template_id === templateId && ['draft', 'approved', 'pending_review'].includes(a.status)
     )
     if (!artifact) {
       result.missingArtifacts.push(templateId)
       result.canRun = false
+
+      // Add helpful message about where to create the artifact
+      const meta = TEMPLATE_METADATA[templateId]
+      if (requiredScope === 'client') {
+        result.warnings.push(`${meta.name} should be created at the Client level`)
+      }
     }
   }
 
   // Check previous station was completed (if required)
+  // For S-01 requirement, check client-level station runs
+  // For S-02 requirement, check that S-01 was completed for this client
   if (requirements.previousStation) {
+    const prevStationScope = STATION_SCOPES[requirements.previousStation]
     const prevStation = completedStations.find(
-      (s) => s.station_id === requirements.previousStation && s.status === 'approved'
+      (s) => s.station_id === requirements.previousStation &&
+             ['approved', 'complete'].includes(s.status)
     )
     if (!prevStation) {
       result.missingStations.push(requirements.previousStation)
       result.canRun = false
+
+      // Add helpful message
+      const prevReq = STATION_REQUIREMENTS[requirements.previousStation]
+      if (prevStationScope === 'client') {
+        result.warnings.push(`${prevReq.name} must be run at the Client level first`)
+      }
     }
   }
 
