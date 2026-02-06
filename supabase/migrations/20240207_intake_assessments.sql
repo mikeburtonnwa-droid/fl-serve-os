@@ -105,8 +105,8 @@ CREATE POLICY "Only admins can modify question weights"
   ON intake_question_weights FOR ALL
   USING (
     EXISTS (
-      SELECT 1 FROM user_profiles
-      WHERE user_id = auth.uid() AND role = 'admin'
+      SELECT 1 FROM users
+      WHERE id = auth.uid() AND role = 'admin'
     )
   );
 
@@ -119,8 +119,8 @@ CREATE POLICY "Only admins can modify category weights"
   ON intake_category_weights FOR ALL
   USING (
     EXISTS (
-      SELECT 1 FROM user_profiles
-      WHERE user_id = auth.uid() AND role = 'admin'
+      SELECT 1 FROM users
+      WHERE id = auth.uid() AND role = 'admin'
     )
   );
 

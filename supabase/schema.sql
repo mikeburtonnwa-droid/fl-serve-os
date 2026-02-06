@@ -40,6 +40,7 @@ CREATE TABLE IF NOT EXISTS public.clients (
 CREATE TABLE IF NOT EXISTS public.engagements (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   client_id UUID NOT NULL REFERENCES public.clients(id) ON DELETE CASCADE,
+  consultant_id UUID REFERENCES public.users(id),
   name TEXT NOT NULL,
   pathway TEXT NOT NULL CHECK (pathway IN ('knowledge_spine', 'roi_audit', 'workflow_sprint')),
   status TEXT NOT NULL DEFAULT 'intake' CHECK (status IN ('intake', 'discovery', 'active', 'review', 'complete', 'on_hold')),
@@ -170,6 +171,7 @@ CREATE INDEX IF NOT EXISTS idx_clients_status ON public.clients(status);
 CREATE INDEX IF NOT EXISTS idx_clients_created_by ON public.clients(created_by);
 
 CREATE INDEX IF NOT EXISTS idx_engagements_client_id ON public.engagements(client_id);
+CREATE INDEX IF NOT EXISTS idx_engagements_consultant_id ON public.engagements(consultant_id);
 CREATE INDEX IF NOT EXISTS idx_engagements_status ON public.engagements(status);
 CREATE INDEX IF NOT EXISTS idx_engagements_pathway ON public.engagements(pathway);
 
