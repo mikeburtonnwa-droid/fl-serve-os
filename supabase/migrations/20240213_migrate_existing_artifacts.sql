@@ -76,14 +76,15 @@ WHERE template_id IN ('TPL-03', 'TPL-05', 'TPL-09', 'TPL-10', 'TPL-12')
 -- -----------------------------------------------------------------------------
 
 -- Add client_id to S-01 runs and mark as client-scope
+-- Must set engagement_id = NULL to satisfy station_run_ownership_check constraint
 UPDATE station_runs sr
 SET
   client_id = e.client_id,
-  scope = 'client'
+  scope = 'client',
+  engagement_id = NULL
 FROM engagements e
 WHERE sr.engagement_id = e.id
-  AND sr.station_id = 'S-01'
-  AND sr.client_id IS NULL;
+  AND sr.station_id = 'S-01';
 
 -- -----------------------------------------------------------------------------
 -- STEP 6: Mark S-02 and S-03 runs as engagement-scope

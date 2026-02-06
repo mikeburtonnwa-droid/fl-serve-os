@@ -149,15 +149,16 @@ WHERE template_id IN ('TPL-03', 'TPL-05', 'TPL-09', 'TPL-10', 'TPL-12')
 
 -- -----------------------------------------------------------------------------
 -- 2.5 Migrate S-01 runs to client level
+-- Must set engagement_id to NULL to satisfy the ownership constraint
 -- -----------------------------------------------------------------------------
 UPDATE station_runs sr
 SET
   client_id = e.client_id,
-  scope = 'client'
+  scope = 'client',
+  engagement_id = NULL  -- Client-level runs don't have engagement_id
 FROM engagements e
 WHERE sr.engagement_id = e.id
-  AND sr.station_id = 'S-01'
-  AND sr.client_id IS NULL;
+  AND sr.station_id = 'S-01';
 
 -- -----------------------------------------------------------------------------
 -- 2.6 Set scope for S-02, S-03 runs
