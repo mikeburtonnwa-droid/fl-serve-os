@@ -11,12 +11,12 @@
 -- -----------------------------------------------------------------------------
 -- STEP 1: Migrate intake assessment data from engagements to clients
 -- For each client, use the most recent engagement's intake data
+-- Note: engagements table only has intake_score, not intake_responses
 -- -----------------------------------------------------------------------------
 WITH latest_intake AS (
   SELECT DISTINCT ON (client_id)
     client_id,
-    intake_score,
-    intake_responses
+    intake_score
   FROM engagements
   WHERE intake_score IS NOT NULL
   ORDER BY client_id, created_at DESC
@@ -24,7 +24,6 @@ WITH latest_intake AS (
 UPDATE clients c
 SET
   intake_score = li.intake_score,
-  intake_responses = li.intake_responses,
   intake_completed_at = NOW()
 FROM latest_intake li
 WHERE c.id = li.client_id
