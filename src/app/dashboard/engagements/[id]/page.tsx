@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -140,6 +140,9 @@ export default function EngagementDetailPage() {
     missingStations: StationId[]
   } | null>(null)
 
+  // Ref to prevent duplicate station runs (synchronous check before async state update)
+  const runningStationsRef = useRef<Set<string>>(new Set())
+
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -222,6 +225,11 @@ export default function EngagementDetailPage() {
   const runStation = async (stationId: StationId) => {
     if (!engagement) return
 
+    // Synchronous check to prevent duplicate runs (before async state update)
+    if (runningStationsRef.current.has(stationId)) {
+      return
+    }
+
     // Check validation first
     const validation = stationValidations.find((v) => v.stationId === stationId)
     if (validation && !validation.validation.canRun) {
@@ -233,8 +241,17 @@ export default function EngagementDetailPage() {
       return
     }
 
+    // Mark as running immediately (synchronous) to prevent duplicate clicks
+    runningStationsRef.current.add(stationId)
     setRunningStation(stationId)
     setGateError(null)
+
+    // Immediate visual feedback
+    addToast({
+      type: 'info',
+      title: 'Starting Station',
+      message: `Running ${stationId}...`,
+    })
 
     try {
       const response = await fetch('/api/stations/run', {
@@ -301,6 +318,7 @@ export default function EngagementDetailPage() {
         message: 'Failed to run station. Please try again.',
       })
     } finally {
+      runningStationsRef.current.delete(stationId)
       setRunningStation(null)
     }
   }
