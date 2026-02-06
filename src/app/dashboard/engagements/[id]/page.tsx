@@ -222,6 +222,24 @@ export default function EngagementDetailPage() {
     }))
   }, [artifacts, stationRuns])
 
+  // Find station runs with uncreated artifact suggestions
+  const pendingArtifactSuggestions = useMemo(() => {
+    const existingTemplateIds = new Set(artifacts.map(a => a.template_id))
+
+    return stationRuns
+      .filter(run =>
+        run.output_data?.suggestedArtifacts &&
+        run.output_data.suggestedArtifacts.length > 0
+      )
+      .map(run => {
+        const uncreated = (run.output_data?.suggestedArtifacts || []).filter(
+          suggestion => !existingTemplateIds.has(suggestion.templateId)
+        )
+        return { run, uncreatedCount: uncreated.length }
+      })
+      .filter(item => item.uncreatedCount > 0)
+  }, [artifacts, stationRuns])
+
   const runStation = async (stationId: StationId) => {
     if (!engagement) return
 
@@ -423,6 +441,44 @@ export default function EngagementDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Pending Artifact Suggestions Alert */}
+      {pendingArtifactSuggestions.length > 0 && (
+        <Card className="border-purple-200 bg-purple-50">
+          <CardContent className="pt-6">
+            <div className="flex items-start gap-3">
+              <Sparkles className="h-5 w-5 text-purple-600 mt-0.5" />
+              <div className="flex-1">
+                <h4 className="font-medium text-purple-900">
+                  AI-Generated Artifacts Available
+                </h4>
+                <p className="text-sm text-purple-700 mt-1">
+                  {pendingArtifactSuggestions.reduce((sum, item) => sum + item.uncreatedCount, 0)} artifact
+                  {pendingArtifactSuggestions.reduce((sum, item) => sum + item.uncreatedCount, 0) !== 1 ? 's' : ''} suggested
+                  from station runs. Click below to review and create them.
+                </p>
+                <div className="flex flex-wrap gap-2 mt-3">
+                  {pendingArtifactSuggestions.map(({ run, uncreatedCount }) => (
+                    <Button
+                      key={run.id}
+                      variant="outline"
+                      size="sm"
+                      className="border-purple-300 text-purple-700 hover:bg-purple-100"
+                      onClick={() => {
+                        setSelectedStationRun(run)
+                        setShowOutput(true)
+                      }}
+                    >
+                      <Sparkles className="h-3 w-3 mr-1" />
+                      {run.station_id}: {uncreatedCount} artifact{uncreatedCount !== 1 ? 's' : ''}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Gatekeeper Error */}
       {gateError && (
