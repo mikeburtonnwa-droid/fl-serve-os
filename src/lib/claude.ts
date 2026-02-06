@@ -502,6 +502,14 @@ export async function runStation(
   }
 }
 
+// Check if an object looks like a Current State Map process
+function isCurrentStateMapProcess(obj: Record<string, unknown>): boolean {
+  // Check for common process fields
+  const processFields = ['process_name', 'process_owner', 'process_description', 'pain_points', 'automation_potential']
+  const matchingFields = processFields.filter(field => field in obj)
+  return matchingFields.length >= 2 // At least 2 process-like fields
+}
+
 // Extract structured artifact suggestions from station output
 function extractSuggestedArtifacts(
   content: string,
@@ -519,49 +527,89 @@ function extractSuggestedArtifacts(
       const jsonContent = JSON.parse(match[1])
 
       // Try to determine which template this JSON is for based on structure
-      if (jsonContent.processes && outputTemplates.includes('TPL-02')) {
-        // Current State Map data
-        for (const process of jsonContent.processes) {
+      // TPL-02: Current State Map - handle multiple formats
+      if (outputTemplates.includes('TPL-02')) {
+        // Format 1: { "processes": [...] }
+        if (jsonContent.processes && Array.isArray(jsonContent.processes)) {
+          for (const process of jsonContent.processes) {
+            suggestions.push({
+              templateId: 'TPL-02',
+              suggestedContent: process,
+              action: 'create',
+            })
+          }
+          continue
+        }
+        // Format 2: Array of processes directly [...]
+        if (Array.isArray(jsonContent)) {
+          for (const item of jsonContent) {
+            if (isCurrentStateMapProcess(item)) {
+              suggestions.push({
+                templateId: 'TPL-02',
+                suggestedContent: item,
+                action: 'create',
+              })
+            }
+          }
+          if (suggestions.length > 0) continue
+        }
+        // Format 3: Single process object
+        if (isCurrentStateMapProcess(jsonContent)) {
           suggestions.push({
             templateId: 'TPL-02',
-            suggestedContent: process,
+            suggestedContent: jsonContent,
             action: 'create',
           })
+          continue
         }
-      } else if (jsonContent.solution_name && outputTemplates.includes('TPL-03')) {
-        // Future State Design
+      }
+
+      // TPL-03: Future State Design
+      if (jsonContent.solution_name && outputTemplates.includes('TPL-03')) {
         suggestions.push({
           templateId: 'TPL-03',
           suggestedContent: jsonContent,
           action: 'create',
         })
-      } else if (jsonContent.project_name && jsonContent.phases && outputTemplates.includes('TPL-05')) {
-        // Implementation Plan
+        continue
+      }
+
+      // TPL-05: Implementation Plan
+      if (jsonContent.project_name && jsonContent.phases && outputTemplates.includes('TPL-05')) {
         suggestions.push({
           templateId: 'TPL-05',
           suggestedContent: jsonContent,
           action: 'create',
         })
-      } else if (jsonContent.current_hours_per_week && outputTemplates.includes('TPL-09')) {
-        // ROI Calculator
+        continue
+      }
+
+      // TPL-09: ROI Calculator
+      if (jsonContent.current_hours_per_week && outputTemplates.includes('TPL-09')) {
         suggestions.push({
           templateId: 'TPL-09',
           suggestedContent: jsonContent,
           action: 'create',
         })
-      } else if (jsonContent.project_summary && outputTemplates.includes('TPL-10')) {
-        // Client Handoff
+        continue
+      }
+
+      // TPL-10: Client Handoff
+      if (jsonContent.project_summary && outputTemplates.includes('TPL-10')) {
         suggestions.push({
           templateId: 'TPL-10',
           suggestedContent: jsonContent,
           action: 'create',
         })
+        continue
       }
-    } catch {
-      // Invalid JSON, skip
+    } catch (e) {
+      // Invalid JSON, log and skip
+      console.warn('Failed to parse JSON block in station output:', e)
     }
   }
 
+  console.log(`Extracted ${suggestions.length} artifact suggestions from ${stationId} output`)
   return suggestions.length > 0 ? suggestions : undefined
 }
 
