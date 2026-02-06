@@ -6,7 +6,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from '@/lib/supabase/server'
 import { z } from 'zod'
 import {
   generateMagicToken,
@@ -15,12 +15,6 @@ import {
   calculateExpirationDate,
   generateMagicLinkEmail,
 } from '@/lib/portal'
-
-// Initialize Supabase client
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
 
 // =============================================================================
 // Validation Schemas
@@ -40,6 +34,7 @@ const CreateMagicLinkSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
+    const supabase = await createClient()
     const body = await request.json()
 
     // Validate request
@@ -174,6 +169,7 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
+    const supabase = await createClient()
     const { searchParams } = new URL(request.url)
     const engagementId = searchParams.get('engagementId')
 

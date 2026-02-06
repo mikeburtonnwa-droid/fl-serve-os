@@ -5,19 +5,13 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from '@/lib/supabase/server'
 import { z } from 'zod'
 import {
   hashToken,
   isValidTokenFormat,
   calculateSessionExpiration,
 } from '@/lib/portal'
-
-// Initialize Supabase client
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
 
 // =============================================================================
 // Validation Schema
@@ -33,6 +27,7 @@ const ValidateTokenSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
+    const supabase = await createClient()
     const body = await request.json()
 
     // Validate request

@@ -6,14 +6,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from '@/lib/supabase/server'
 import { z } from 'zod'
-
-// Initialize Supabase client
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
 
 // =============================================================================
 // Validation Schemas
@@ -45,6 +39,7 @@ const UpdateWeightsSchema = z.object({
 
 export async function GET() {
   try {
+    const supabase = await createClient()
     // Fetch question weights
     const { data: questionWeights, error: qError } = await supabase
       .from('intake_question_weights')
@@ -98,6 +93,7 @@ export async function GET() {
 
 export async function PUT(request: NextRequest) {
   try {
+    const supabase = await createClient()
     const body = await request.json()
 
     // Validate request body
